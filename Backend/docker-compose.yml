@@ -1,0 +1,16 @@
+services:
+  face-recognition-api:
+    build: .
+    container_name: face_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - insightface_models:/root/.insightface
+      # Remove paddleocr_models - lazy load handles it
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+
+volumes:
+  insightface_models:

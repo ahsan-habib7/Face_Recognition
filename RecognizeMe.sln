@@ -1,0 +1,32 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Frontend", "Frontend", "{CE609670-85B9-0D16-FB54-ED063D5D8A6D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Files", "Files", "{1B832D38-7176-95CA-B6AA-C1C390408DEA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FaceRecognition_Frontend", "Frontend\Files\FaceRecognition_Frontend.csproj", "{73CAC982-8657-256D-3280-9FF549E27E66}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{73CAC982-8657-256D-3280-9FF549E27E66}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73CAC982-8657-256D-3280-9FF549E27E66}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73CAC982-8657-256D-3280-9FF549E27E66}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73CAC982-8657-256D-3280-9FF549E27E66}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{1B832D38-7176-95CA-B6AA-C1C390408DEA} = {CE609670-85B9-0D16-FB54-ED063D5D8A6D}
+		{73CAC982-8657-256D-3280-9FF549E27E66} = {1B832D38-7176-95CA-B6AA-C1C390408DEA}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4650A26A-1A1E-452D-8F40-658ED3D8B0AC}
+	EndGlobalSection
+EndGlobal

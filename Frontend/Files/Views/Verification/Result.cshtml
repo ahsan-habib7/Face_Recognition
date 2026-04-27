@@ -1,0 +1,706 @@
+﻿@using Face_Recognition.Services
+@model FaceVerificationResult
+
+@{
+    ViewData["Title"] = "Verification Result";
+    Layout = null;
+
+    bool isError  = Model.Error != null;
+    bool isSpoof  = !isError && Model.SpoofFlagged;
+    bool isMatch  = !isError && !isSpoof && Model.Match;
+    bool isReview = !isError && !isSpoof && !isMatch && Model.Similarity >= 0.35;
+
+    string statusLabel = Model.MatchStatus;
+    double simPct      = Model.MatchPercentage;
+
+    bool hasUserInputs = !string.IsNullOrWhiteSpace(Model.UserName)
+                      || !string.IsNullOrWhiteSpace(Model.UserNameBn)
+                      || !string.IsNullOrWhiteSpace(Model.UserFather)
+                      || !string.IsNullOrWhiteSpace(Model.UserMother)
+                      || !string.IsNullOrWhiteSpace(Model.UserNid)
+                      || !string.IsNullOrWhiteSpace(Model.UserDob);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SecureBank — Verification Result</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --navy:       #0b1629;
+            --navy-mid:   #112240;
+            --navy-light: #1a3560;
+            --gold:       #d4a843;
+            --gold-light: #e8c37a;
+            --gold-dim:   #8a6b25;
+            --cream:      #f5f0e8;
+            --white:      #ffffff;
+            --muted:      #8899aa;
+            --danger:     #e05454;
+            --success:    #2ecc8a;
+            --warning:    #f59e0b;
+            --border:     rgba(212,168,67,0.18);
+            --radius:     14px;
+        }
+
+        body {
+            background: var(--navy); color: var(--cream);
+            font-family: -apple-system,'Segoe UI',system-ui,sans-serif;
+            min-height: 100vh; display: flex; flex-direction: column;
+        }
+
+        .navbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1.2rem 3rem; border-bottom: 1px solid var(--border);
+            background: rgba(11,22,41,0.97);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .nav-logo { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+        .logo-emblem {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+            border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+        }
+        .logo-text { font-size: 1.25rem; color: var(--white); font-weight: 600; }
+        .logo-text span { color: var(--gold); }
+        .nav-badge {
+            font-size: 0.72rem; font-weight: 600;
+            background: rgba(212,168,67,0.12); color: var(--gold);
+            border: 1px solid var(--border); padding: 0.3rem 0.8rem;
+            border-radius: 999px; letter-spacing: 0.06em; text-transform: uppercase;
+        }
+
+        .page-body {
+            flex: 1; display: grid; grid-template-columns: 1fr 1fr;
+            min-height: calc(100vh - 130px);
+        }
+
+        .left-col {
+            background:
+                radial-gradient(ellipse 80% 70% at 20% 30%, rgba(212,168,67,0.09) 0%, transparent 60%),
+                linear-gradient(160deg, var(--navy) 0%, var(--navy-mid) 100%);
+            padding: 2.5rem 3rem;
+            display: flex; flex-direction: column;
+            gap: 1.5rem;
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+        }
+
+        .steps-done { display: flex; flex-direction: column; gap: 0; }
+        .step-row { display: flex; align-items: flex-start; gap: 1rem; position: relative; }
+        .step-row:not(:last-child)::before {
+            content: ''; position: absolute; left: 19px; top: 40px;
+            width: 2px; height: calc(100% - 8px);
+            background: var(--gold); opacity: 0.4;
+        }
+        .step-left  { display: flex; flex-direction: column; align-items: center; padding-bottom: 1.2rem; }
+        .step-circle {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; font-weight: 700; flex-shrink: 0; z-index: 1;
+            background: var(--gold); color: var(--navy);
+        }
+        .step-circle.active { box-shadow: 0 0 0 4px rgba(212,168,67,0.2); }
+        .step-info { display: flex; flex-direction: column; gap: 0.15rem; padding-top: 0.6rem; padding-bottom: 1.2rem; }
+        .step-name { font-size: 0.88rem; font-weight: 600; color: var(--gold); }
+        .step-desc { font-size: 0.75rem; color: rgba(212,168,67,0.6); }
+
+        .section-title {
+            font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--gold); margin-bottom: 0.75rem;
+        }
+        .face-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+        .face-panel {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1rem; text-align: center;
+        }
+        .face-panel-label {
+            font-size: 0.68rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.6rem;
+        }
+        .face-img {
+            width: 100%; max-width: 140px; height: 140px;
+            object-fit: cover; border-radius: 10px;
+            border: 2px solid var(--border); margin: 0 auto; display: block;
+        }
+        .face-img-placeholder {
+            width: 140px; height: 140px;
+            background: var(--navy-light); border-radius: 10px;
+            border: 2px dashed var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; margin: 0 auto;
+        }
+
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table tr { border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .data-table tr:last-child { border-bottom: none; }
+        .data-table td { padding: 0.55rem 0.4rem; font-size: 0.82rem; vertical-align: top; }
+        .dt-key {
+            color: var(--muted); font-size: 0.72rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            width: 36%; white-space: nowrap;
+        }
+        .dt-val   { color: var(--cream); font-weight: 500; }
+        .dt-match   { color: var(--success) !important; }
+        .dt-mismatch { color: var(--danger) !important; }
+        .match-icon { font-size: 0.8rem; margin-left: 0.3rem; }
+
+        .input-section {
+            background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1rem;
+        }
+
+        .right-col {
+            background: var(--navy-mid); padding: 2.5rem 2.5rem;
+            display: flex; flex-direction: column; justify-content: center;
+            overflow-y: auto;
+        }
+
+        .result-card {
+            background: var(--navy); border: 1px solid var(--border);
+            border-radius: 24px; padding: 2.2rem;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+            animation: fadeUp 0.45s cubic-bezier(0.22,1,0.36,1) both;
+        }
+        @@keyframes fadeUp {
+            from { opacity:0; transform:translateY(18px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+
+        .result-icon-wrap {
+            width: 84px; height: 84px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2.2rem; margin: 0 auto 1.2rem;
+            animation: popIn 0.5s 0.2s cubic-bezier(0.34,1.56,0.64,1) both;
+        }
+        @@keyframes popIn {
+            from { opacity:0; transform:scale(0.5); }
+            to   { opacity:1; transform:scale(1); }
+        }
+        .icon-verified { background: rgba(46,204,138,0.1);  border: 2px solid var(--success); }
+        .icon-review   { background: rgba(245,158,11,0.1);  border: 2px solid var(--warning); }
+        .icon-failed   { background: rgba(224,84,84,0.1);   border: 2px solid var(--danger);  }
+        .icon-error    { background: rgba(245,158,11,0.1);  border: 2px solid var(--warning); }
+
+        .status-badge {
+            display: block; text-align: center;
+            padding: 0.32rem 1rem; border-radius: 999px;
+            font-size: 0.72rem; font-weight: 700; letter-spacing: 0.09em;
+            text-transform: uppercase; margin-bottom: 1rem;
+        }
+        .badge-verified { background: rgba(46,204,138,0.12); color: var(--success); border: 1px solid rgba(46,204,138,0.3); }
+        .badge-review   { background: rgba(245,158,11,0.12); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+        .badge-failed   { background: rgba(224,84,84,0.12);  color: var(--danger);  border: 1px solid rgba(224,84,84,0.3);  }
+        .badge-error    { background: rgba(245,158,11,0.12); color: var(--warning); border: 1px solid rgba(245,158,11,0.3); }
+
+        .result-title {
+            font-size: 1.75rem; font-weight: 700;
+            color: var(--white); margin-bottom: 0.6rem;
+            letter-spacing: -0.02em; text-align: center;
+        }
+        .result-message {
+            color: var(--muted); font-size: 0.88rem; line-height: 1.7;
+            margin-bottom: 1.8rem; text-align: center;
+        }
+
+        .meter-box {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1.1rem 1.3rem; margin-bottom: 1.4rem;
+        }
+        .meter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+        .meter-label  { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+        .meter-pct    { font-family: monospace; font-size: 1.1rem; font-weight: 700; color: var(--cream); }
+        .meter-track  { height: 10px; background: var(--navy-light); border-radius: 5px; overflow: hidden; margin-bottom: 0.5rem; }
+        .meter-fill   { height: 100%; border-radius: 5px; width: 0%; transition: width 1.2s cubic-bezier(0.22,1,0.36,1); }
+        .fill-verified { background: linear-gradient(90deg, #2ecc8a, #1aab70); }
+        .fill-review   { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .fill-failed   { background: linear-gradient(90deg, #e05454, #c03434); }
+        .meter-sub { font-family: monospace; font-size: 0.68rem; color: var(--muted); }
+
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin-bottom: 1.8rem; }
+        .info-item {
+            background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 0.75rem 1rem;
+        }
+        .info-item-label { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 0.25rem; }
+        .info-item-value { font-size: 0.82rem; font-weight: 600; }
+        .val-ok   { color: var(--success); }
+        .val-warn { color: var(--warning); }
+        .val-fail { color: var(--danger);  }
+
+        .btn-row { display: flex; gap: 0.75rem; }
+        .btn-primary {
+            flex: 1; padding: 0.9rem;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+            color: var(--navy); font-size: 0.88rem; font-weight: 700;
+            border: none; border-radius: var(--radius);
+            text-decoration: none; text-align: center; cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-secondary {
+            flex: 1; padding: 0.9rem; background: transparent; color: var(--cream);
+            font-size: 0.88rem; font-weight: 600;
+            border: 1.5px solid var(--border); border-radius: var(--radius);
+            text-decoration: none; text-align: center; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-secondary:hover { border-color: var(--gold-dim); }
+
+        .footer {
+            background: var(--navy); border-top: 1px solid var(--border);
+            padding: 1rem 3rem; display: flex; align-items: center; justify-content: space-between;
+        }
+        .footer-text { font-size: 0.73rem; color: var(--muted); }
+        .footer-text span { color: var(--gold); }
+
+        @@media (max-width: 1024px) {
+            .page-body { grid-template-columns: 1fr; }
+            .left-col  { padding: 2rem 1.5rem; border-right: none; border-bottom: 1px solid var(--border); }
+            .right-col { padding: 2rem 1.5rem; justify-content: flex-start; }
+            .navbar    { padding: 1rem 1.5rem; }
+            .info-grid { grid-template-columns: 1fr; }
+            .btn-row   { flex-direction: column; }
+            .footer    { flex-direction: column; gap: 0.4rem; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a class="nav-logo" href="/">
+            <div class="logo-emblem">🏦</div>
+            <span class="logo-text">Secure<span>Bank</span></span>
+        </a>
+        <span class="nav-badge">🔒 KYC Result</span>
+    </nav>
+
+    <div class="page-body">
+        <div class="left-col">
+            <div class="steps-done">
+                <div class="step-row">
+                    <div class="step-left"><div class="step-circle">✓</div></div>
+                    <div class="step-info">
+                        <span class="step-name">ID Card Uploaded</span>
+                        <span class="step-desc">OCR processing complete</span>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <div class="step-left"><div class="step-circle">✓</div></div>
+                    <div class="step-info">
+                        <span class="step-name">Liveness Verified</span>
+                        <span class="step-desc">Blink · Head turn · Motion</span>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <div class="step-left"><div class="step-circle active">3</div></div>
+                    <div class="step-info">
+                        <span class="step-name">AI Verification Result</span>
+                        <span class="step-desc">
+                            @if (isError)      { <text>⚠️ Error occurred</text>         }
+                            else if (isSpoof)  { <text>🚨 Spoofing detected</text>       }
+                            else if (isMatch)  { <text>✅ Identity confirmed</text>      }
+                            else if (isReview) { <text>⚠️ Needs manual review</text>    }
+                            else               { <text>❌ Verification failed</text>     }
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            @if (!isError)
+            {
+                <div>
+                    <div class="section-title">🔍 Face Comparison — ArcFace</div>
+                    <div class="face-panels">
+                        <div class="face-panel">
+                            <div class="face-panel-label">🪪 NID Card Face</div>
+                            @if (!string.IsNullOrEmpty(Model.NidFaceImage))
+                            {
+                                <img src="data:image/jpeg;base64,@Model.NidFaceImage"
+                                     alt="NID face" class="face-img" />
+                            }
+                            else
+                            {
+                                <div class="face-img-placeholder">🪪</div>
+                            }
+                        </div>
+                        <div class="face-panel">
+                            <div class="face-panel-label">🤳 Live Selfie</div>
+                            @if (!string.IsNullOrEmpty(Model.LiveFaceImage))
+                            {
+                                <img src="data:image/jpeg;base64,@Model.LiveFaceImage"
+                                     alt="Live selfie" class="face-img" />
+                            }
+                            else
+                            {
+                                <div class="face-img-placeholder">🤳</div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @if (!isError && !isSpoof && Model.NidData != null)
+            {
+                <div>
+                    <div class="section-title">📋 Extracted NID Data (PaddleOCR)</div>
+                    <table class="data-table">
+                        @{
+                            string NameEnOcr = string.IsNullOrWhiteSpace(Model.NidData.NameEn)
+                                ? Model.NidData.Name : Model.NidData.NameEn;
+                        }
+                        <tr>
+                            <td class="dt-key">Name (EN)</td>
+                            <td class="dt-val @(Model.NameMatch == true ? "dt-match" : Model.NameMatch == false ? "dt-mismatch" : "")">
+                                @(string.IsNullOrWhiteSpace(NameEnOcr) ? "— (not detected)" : NameEnOcr)
+                                @if (Model.NameMatch == true)  { <span class="match-icon">✅</span> }
+                                @if (Model.NameMatch == false) { <span class="match-icon">❌</span> }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="dt-key">নাম (BN)</td>
+                            <td class="dt-val @(Model.NameBnMatch == true ? "dt-match" : Model.NameBnMatch == false ? "dt-mismatch" : "")" style="font-family:'Shonar Bangla','Vrinda','Siyam Rupali','Kalpurush','Nirmala UI',serif;">
+                                @(string.IsNullOrWhiteSpace(Model.NidData.NameBn) ? "— (not detected)" : Model.NidData.NameBn)
+                                @if (Model.NameBnMatch == true)  { <span class="match-icon">✅</span> }
+                                @if (Model.NameBnMatch == false) { <span class="match-icon">❌</span> }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="dt-key">পিতা</td>
+                            <td class="dt-val @(Model.FatherMatch == true ? "dt-match" : Model.FatherMatch == false ? "dt-mismatch" : "")" style="font-family:'Shonar Bangla','Vrinda','Siyam Rupali','Kalpurush','Nirmala UI',serif;">
+                                @(string.IsNullOrWhiteSpace(Model.NidData.FatherBn) ? "— (not detected)" : Model.NidData.FatherBn)
+                                @if (Model.FatherMatch == true)  { <span class="match-icon">✅</span> }
+                                @if (Model.FatherMatch == false) { <span class="match-icon">❌</span> }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="dt-key">মাতা</td>
+                            <td class="dt-val @(Model.MotherMatch == true ? "dt-match" : Model.MotherMatch == false ? "dt-mismatch" : "")" style="font-family:'Shonar Bangla','Vrinda','Siyam Rupali','Kalpurush','Nirmala UI',serif;">
+                                @(string.IsNullOrWhiteSpace(Model.NidData.MotherBn) ? "— (not detected)" : Model.NidData.MotherBn)
+                                @if (Model.MotherMatch == true)  { <span class="match-icon">✅</span> }
+                                @if (Model.MotherMatch == false) { <span class="match-icon">❌</span> }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="dt-key">NID Number</td>
+                            <td class="dt-val @(Model.NidMatch == true ? "dt-match" : Model.NidMatch == false ? "dt-mismatch" : "")">
+                                @(string.IsNullOrWhiteSpace(Model.NidData.NidNumber) ? "— (not detected)" : Model.NidData.NidNumber)
+                                @if (Model.NidMatch == true)  { <span class="match-icon">✅</span> }
+                                @if (Model.NidMatch == false) { <span class="match-icon">❌</span> }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="dt-key">Date of Birth</td>
+                            <td class="dt-val @(Model.DobMatch == true ? "dt-match" : Model.DobMatch == false ? "dt-mismatch" : "")">
+                                @(string.IsNullOrWhiteSpace(Model.NidData.Dob) ? "— (not detected)" : Model.NidData.Dob)
+                                @if (Model.DobMatch == true)  { <span class="match-icon">✅</span> }
+                                @if (Model.DobMatch == false) { <span class="match-icon">❌</span> }
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            }
+
+            @if (hasUserInputs && !isError && !isSpoof)
+            {
+                <div>
+                    <div class="section-title">👤 Your Submitted Information</div>
+                    <div class="input-section">
+                        <table class="data-table">
+                            @if (!string.IsNullOrWhiteSpace(Model.UserName))
+                            {
+                                <tr>
+                                    <td class="dt-key">Name (EN)</td>
+                                    <td class="dt-val @(Model.NameMatch == true ? "dt-match" : Model.NameMatch == false ? "dt-mismatch" : "")">
+                                        @Model.UserName
+                                        @if (Model.NameMatch == true)  { <span class="match-icon">✅ Matches</span> }
+                                        @if (Model.NameMatch == false) { <span class="match-icon">❌ Mismatch</span> }
+                                    </td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(Model.UserNameBn))
+                            {
+                                <tr>
+                                    <td class="dt-key">নাম (BN)</td>
+                                    <td class="dt-val @(Model.NameBnMatch == true ? "dt-match" : Model.NameBnMatch == false ? "dt-mismatch" : "")" style="font-family:'Shonar Bangla','Vrinda','Siyam Rupali','Kalpurush','Nirmala UI',serif;">
+                                        @Model.UserNameBn
+                                        @if (Model.NameBnMatch == true)  { <span class="match-icon">✅ Matches</span> }
+                                        @if (Model.NameBnMatch == false) { <span class="match-icon">❌ Mismatch</span> }
+                                    </td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(Model.UserFather))
+                            {
+                                <tr>
+                                    <td class="dt-key">পিতা</td>
+                                    <td class="dt-val @(Model.FatherMatch == true ? "dt-match" : Model.FatherMatch == false ? "dt-mismatch" : "")" style="font-family:'Shonar Bangla','Vrinda','Siyam Rupali','Kalpurush','Nirmala UI',serif;">
+                                        @Model.UserFather
+                                        @if (Model.FatherMatch == true)  { <span class="match-icon">✅ Matches</span> }
+                                        @if (Model.FatherMatch == false) { <span class="match-icon">❌ Mismatch</span> }
+                                    </td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(Model.UserMother))
+                            {
+                                <tr>
+                                    <td class="dt-key">মাতা</td>
+                                    <td class="dt-val @(Model.MotherMatch == true ? "dt-match" : Model.MotherMatch == false ? "dt-mismatch" : "")" style="font-family:'Shonar Bangla','Vrinda','Siyam Rupali','Kalpurush','Nirmala UI',serif;">
+                                        @Model.UserMother
+                                        @if (Model.MotherMatch == true)  { <span class="match-icon">✅ Matches</span> }
+                                        @if (Model.MotherMatch == false) { <span class="match-icon">❌ Mismatch</span> }
+                                    </td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(Model.UserNid))
+                            {
+                                <tr>
+                                    <td class="dt-key">NID No.</td>
+                                    <td class="dt-val @(Model.NidMatch == true ? "dt-match" : Model.NidMatch == false ? "dt-mismatch" : "")">
+                                        @Model.UserNid
+                                        @if (Model.NidMatch == true)  { <span class="match-icon">✅ Matches</span> }
+                                        @if (Model.NidMatch == false) { <span class="match-icon">❌ Mismatch</span> }
+                                    </td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(Model.UserDob))
+                            {
+                                <tr>
+                                    <td class="dt-key">Date of Birth</td>
+                                    <td class="dt-val @(Model.DobMatch == true ? "dt-match" : Model.DobMatch == false ? "dt-mismatch" : "")">
+                                        @Model.UserDob
+                                        @if (Model.DobMatch == true)  { <span class="match-icon">✅ Matches</span> }
+                                        @if (Model.DobMatch == false) { <span class="match-icon">❌ Mismatch</span> }
+                                    </td>
+                                </tr>
+                            }
+                        </table>
+                    </div>
+                </div>
+            }
+
+        </div>
+
+        <div class="right-col">
+            <div class="result-card">
+
+                @if (isError)
+                {
+                    <div class="result-icon-wrap icon-error" style="text-align:center">⚠️</div>
+                    <span class="status-badge badge-error">Verification Error</span>
+                    <h2 class="result-title">Could Not Verify</h2>
+                    <p class="result-message">@Model.Error</p>
+
+                    <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:var(--radius);padding:1rem;margin-bottom:1.4rem;">
+                        <div style="font-size:0.75rem;font-weight:600;color:var(--warning);margin-bottom:0.5rem;">Troubleshooting steps:</div>
+                        <ul style="font-size:0.78rem;color:var(--muted);list-style:none;display:flex;flex-direction:column;gap:0.3rem;">
+                            <li>• Ensure both Docker containers are running: <code style="font-size:0.7rem;color:var(--gold)">docker-compose up</code></li>
+                            <li>• Complete all 3 liveness challenges before clicking Verify</li>
+                            <li>• Upload a clear, well-lit photo of your physical NID card</li>
+                            <li>• Check Python container logs: <code style="font-size:0.7rem;color:var(--gold)">docker logs face_api</code></li>
+                        </ul>
+                    </div>
+                }
+                else if (isSpoof)
+                {
+                    <div class="result-icon-wrap icon-failed" style="text-align:center">🚨</div>
+                    <span class="status-badge badge-failed">Spoofing Detected</span>
+                    <h2 class="result-title">Identity Spoofing Alert</h2>
+                    <p class="result-message">
+                        Different faces were detected across the @Model.LivenessCaptures liveness capture stages.<br/>
+                        This session has been flagged as a potential identity spoofing attempt.
+                    </p>
+
+                    <div style="background:rgba(224,84,84,0.06);border:1px solid rgba(224,84,84,0.25);border-radius:var(--radius);padding:1.1rem;margin-bottom:1.4rem;">
+                        <div style="font-size:0.75rem;font-weight:700;color:var(--danger);margin-bottom:0.6rem;display:flex;align-items:center;gap:0.4rem;">
+                            🔒 Multi-Stage Consistency Check Failed
+                        </div>
+                        @if (Model.ConsistencyScores != null && Model.ConsistencyScores.Count > 0)
+                        {
+                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.5rem;margin-bottom:0.7rem;">
+                                @foreach (var kv in Model.ConsistencyScores)
+                                {
+                                    bool passed = kv.Value >= 0.30;
+                                    <div style="background:rgba(255,255,255,0.03);border:1px solid @(passed ? "rgba(46,204,138,0.3)" : "rgba(224,84,84,0.4)");border-radius:8px;padding:0.55rem;text-align:center;">
+                                        <div style="font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.2rem;">Stage @kv.Key</div>
+                                        <div style="font-size:0.9rem;font-weight:700;color:@(passed ? "var(--success)" : "var(--danger)");">@kv.Value.ToString("F3")</div>
+                                        <div style="font-size:0.62rem;color:@(passed ? "var(--success)" : "var(--danger)");">@(passed ? "✓ PASS" : "✗ FAIL")</div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        <div style="font-size:0.73rem;color:rgba(224,84,84,0.8);line-height:1.6;">
+                            Scores below <strong>0.30</strong> indicate different individuals were present.<br/>
+                            This session has been permanently invalidated. A new verification must be started.
+                        </div>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item"><div class="info-item-label">Login Auth</div><div class="info-item-value val-fail">🚨 Blocked</div></div>
+                        <div class="info-item"><div class="info-item-label">KYC Status</div><div class="info-item-value val-fail">🚨 Flagged</div></div>
+                        <div class="info-item"><div class="info-item-label">Account Opening</div><div class="info-item-value val-fail">🚨 Blocked</div></div>
+                        <div class="info-item"><div class="info-item-label">Transaction Auth</div><div class="info-item-value val-fail">🚨 Blocked</div></div>
+                    </div>
+                }
+                else if (isMatch)
+                {
+                    <div class="result-icon-wrap icon-verified" style="text-align:center">✅</div>
+                    <span class="status-badge badge-verified">Identity Verified</span>
+                    <h2 class="result-title">Verification Successful</h2>
+                    <p class="result-message">
+                        The live selfie matches the NID card photo.<br />
+                        This customer's identity has been confirmed.
+                    </p>
+
+                    <div class="meter-box">
+                        <div class="meter-header">
+                            <span class="meter-label">ArcFace Match Score</span>
+                            <span class="meter-pct">@simPct%</span>
+                        </div>
+                        <div class="meter-track">
+                            <div class="meter-fill fill-verified" id="meterFill" data-target="@simPct"></div>
+                        </div>
+                        <span class="meter-sub">
+                            Cosine similarity: @Model.Similarity.ToString("F4")
+                            &nbsp;·&nbsp; Confidence: <strong>@Model.Confidence</strong>
+                            &nbsp;·&nbsp; Threshold: @Model.Threshold
+                        </span>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-item-label">Login Auth</div>
+                            <div class="info-item-value val-ok">✅ Approved</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-label">KYC Status</div>
+                            <div class="info-item-value val-ok">✅ Verified</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-label">Account Opening</div>
+                            <div class="info-item-value val-ok">✅ Eligible</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-label">Transaction Auth</div>
+                            <div class="info-item-value val-ok">✅ Permitted</div>
+                        </div>
+                    </div>
+                }
+                else if (isReview)
+                {
+                    <div class="result-icon-wrap icon-review" style="text-align:center">⚠️</div>
+                    <span class="status-badge badge-review">Needs Review</span>
+                    <h2 class="result-title">Manual Review Required</h2>
+                    <p class="result-message">
+                        The similarity score is borderline.<br />
+                        A compliance officer should manually review this verification.
+                    </p>
+
+                    <div class="meter-box">
+                        <div class="meter-header">
+                            <span class="meter-label">ArcFace Match Score</span>
+                            <span class="meter-pct">@simPct%</span>
+                        </div>
+                        <div class="meter-track">
+                            <div class="meter-fill fill-review" id="meterFill" data-target="@simPct"></div>
+                        </div>
+                        <span class="meter-sub">
+                            Cosine similarity: @Model.Similarity.ToString("F4")
+                            &nbsp;·&nbsp; Confidence: <strong>@Model.Confidence</strong>
+                            &nbsp;·&nbsp; Threshold: @Model.Threshold
+                        </span>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-item-label">Login Auth</div>
+                            <div class="info-item-value val-warn">⚠️ Review</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-label">KYC Status</div>
+                            <div class="info-item-value val-warn">⚠️ Pending</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-label">Account Opening</div>
+                            <div class="info-item-value val-warn">⚠️ On Hold</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-label">Transaction Auth</div>
+                            <div class="info-item-value val-warn">⚠️ Restricted</div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="result-icon-wrap icon-failed" style="text-align:center">❌</div>
+                    <span class="status-badge badge-failed">Not Verified</span>
+                    <h2 class="result-title">Verification Failed</h2>
+                    <p class="result-message">
+                        The selfie does not match the NID card photo.<br />
+                        Please retry with a clearer, well-lit image.
+                    </p>
+
+                    <div class="meter-box">
+                        <div class="meter-header">
+                            <span class="meter-label">ArcFace Match Score</span>
+                            <span class="meter-pct">@simPct%</span>
+                        </div>
+                        <div class="meter-track">
+                            <div class="meter-fill fill-failed" id="meterFill" data-target="@simPct"></div>
+                        </div>
+                        <span class="meter-sub">
+                            Cosine similarity: @Model.Similarity.ToString("F4")
+                            &nbsp;·&nbsp; Confidence: <strong>@Model.Confidence</strong>
+                            &nbsp;·&nbsp; Threshold: @Model.Threshold
+                        </span>
+                    </div>
+
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-item-label">Login Auth</div>
+                            <div class="info-item-value val-fail">❌ Denied</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-label">KYC Status</div>
+                            <div class="info-item-value val-fail">❌ Failed</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-label">Account Opening</div>
+                            <div class="info-item-value val-fail">❌ Blocked</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-item-label">Transaction Auth</div>
+                            <div class="info-item-value val-fail">❌ Denied</div>
+                        </div>
+                    </div>
+                }
+
+                <div class="btn-row">
+                    <a href="/" class="btn-secondary">← Try Again</a>
+                    <a href="/" class="btn-primary">🏠 Back to Home</a>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <footer class="footer">
+        <span class="footer-text">© 2026 <span>SecureBank</span>. All rights reserved.</span>
+        <span class="footer-text">Powered by <span>InsightFace ArcFace</span> · PaddleOCR (PP-OCRv4)</span>
+    </footer>
+
+    <script>
+        // Animate the match percentage meter after page loads
+        window.addEventListener('load', function () {
+            const fill = document.getElementById('meterFill');
+            if (fill) {
+                const target = parseFloat(fill.getAttribute('data-target') || '0');
+                setTimeout(() => { fill.style.width = target + '%'; }, 200);
+            }
+        });
+    </script>
+</body>
+</html>

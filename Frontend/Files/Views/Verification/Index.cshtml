@@ -1,0 +1,1029 @@
+@{
+    ViewData["Title"] = "Face Verification";
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SecureBank — Identity Verification</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+
+        :root {
+            --navy:       #0b1629;
+            --navy-mid:   #112240;
+            --navy-light: #1a3560;
+            --gold:       #d4a843;
+            --gold-light: #e8c37a;
+            --gold-dim:   #8a6b25;
+            --cream:      #f5f0e8;
+            --white:      #ffffff;
+            --muted:      #8899aa;
+            --danger:     #e05454;
+            --success:    #2ecc8a;
+            --border:     rgba(212,168,67,0.18);
+            --radius:     14px;
+        }
+
+        body {
+            background: var(--navy); color: var(--cream);
+            font-family: -apple-system,'Segoe UI',system-ui,sans-serif;
+            min-height: 100vh; display: flex; flex-direction: column;
+        }
+
+        .navbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 1.2rem 3rem; border-bottom: 1px solid var(--border);
+            background: rgba(11,22,41,0.97); backdrop-filter: blur(12px);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .nav-logo { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
+        .logo-emblem {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+            border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+        }
+        .logo-text { font-family: Georgia,'Times New Roman',serif; font-size: 1.25rem; color: var(--white); }
+        .logo-text span { color: var(--gold); }
+        .nav-badge {
+            font-size: 0.72rem; font-weight: 600;
+            background: rgba(212,168,67,0.12); color: var(--gold);
+            border: 1px solid var(--border); padding: 0.3rem 0.8rem;
+            border-radius: 999px; letter-spacing: 0.06em; text-transform: uppercase;
+        }
+
+        .page-body { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: calc(100vh - 67px); }
+
+        .left-col {
+            background: radial-gradient(ellipse 80% 70% at 20% 30%, rgba(212,168,67,0.09) 0%, transparent 60%), linear-gradient(160deg, var(--navy) 0%, var(--navy-mid) 100%);
+            padding: 4rem 3.5rem;
+            display: flex; flex-direction: column; justify-content: center;
+            position: relative; border-right: 1px solid var(--border);
+        }
+        .hero-tag {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            font-size: 0.72rem; font-weight: 600; color: var(--gold);
+            text-transform: uppercase; letter-spacing: 0.1em;
+            background: rgba(212,168,67,0.1); border: 1px solid var(--border);
+            padding: 0.4rem 1rem; border-radius: 999px;
+            margin-bottom: 2rem; width: fit-content;
+        }
+        .hero-tag::before {
+            content: ''; width: 6px; height: 6px;
+            background: var(--gold); border-radius: 50%; animation: pulse 2s infinite;
+        }
+        @@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+        .hero-title {
+            font-family: Georgia,'Times New Roman',serif;
+            font-size: clamp(2.2rem, 3.5vw, 3.2rem);
+            font-weight: 700; color: var(--white);
+            line-height: 1.15; letter-spacing: -0.02em; margin-bottom: 1.2rem;
+        }
+        .hero-title span { color: var(--gold); }
+        .hero-subtitle { font-size: 0.95rem; color: var(--muted); line-height: 1.8; margin-bottom: 2.8rem; max-width: 380px; }
+
+        .steps { display: flex; flex-direction: column; gap: 0; margin-bottom: 3rem; }
+        .step-row { display: flex; align-items: flex-start; gap: 1rem; position: relative; }
+        .step-row:not(:last-child)::before {
+            content: ''; position: absolute; left: 19px; top: 40px;
+            width: 2px; height: calc(100% - 8px); background: var(--border);
+        }
+        .step-left { display: flex; flex-direction: column; align-items: center; padding-bottom: 1.4rem; }
+        .step-circle {
+            width: 40px; height: 40px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem; font-weight: 700; flex-shrink: 0; z-index: 1;
+        }
+        .step-row.active .step-circle   { background: var(--gold); color: var(--navy); box-shadow: 0 0 0 4px rgba(212,168,67,0.2); }
+        .step-row.inactive .step-circle { background: var(--navy-light); color: var(--muted); border: 1px solid var(--border); }
+        .step-row.done .step-circle     { background: var(--gold); color: var(--navy); }
+        .step-info { display: flex; flex-direction: column; gap: 0.15rem; padding-top: 0.6rem; padding-bottom: 1.4rem; }
+        .step-name { font-size: 0.88rem; font-weight: 600; }
+        .step-row.active .step-name   { color: var(--white); }
+        .step-row.inactive .step-name { color: var(--muted); }
+        .step-row.done .step-name     { color: var(--gold); }
+        .step-desc { font-size: 0.75rem; color: var(--muted); }
+        .step-row.done .step-desc     { color: rgba(212,168,67,0.7); }
+        .step-row.done::before        { background: var(--gold); opacity: 0.5; }
+
+        .features { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+        .feature-badge {
+            display: flex; align-items: center; gap: 0.4rem;
+            font-size: 0.73rem; font-weight: 500; padding: 0.4rem 0.9rem;
+            border-radius: 999px; background: rgba(212,168,67,0.07);
+            color: var(--gold-light); border: 1px solid rgba(212,168,67,0.15);
+        }
+
+        .right-col { background: var(--navy-mid); padding: 4rem 3rem; display: flex; flex-direction: column; justify-content: center; }
+
+        .card {
+            background: var(--navy); border: 1px solid var(--border);
+            border-radius: 24px; padding: 2.2rem;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.4);
+        }
+        .card-header {
+            display: flex; align-items: center; gap: 1rem;
+            margin-bottom: 1.8rem; padding-bottom: 1.4rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .card-icon {
+            width: 46px; height: 46px;
+            background: linear-gradient(135deg, rgba(212,168,67,0.2), rgba(212,168,67,0.04));
+            border: 1px solid var(--border); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; font-size: 1.3rem;
+        }
+        .card-header-text h2 { font-size: 1rem; font-weight: 600; color: var(--white); margin-bottom: 0.15rem; }
+        .card-header-text p  { font-size: 0.75rem; color: var(--muted); }
+
+        .upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.4rem; }
+        .upload-group label.upload-label {
+            font-size: 0.72rem; font-weight: 600; color: var(--gold);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            display: block; margin-bottom: 0.4rem;
+        }
+
+        .upload-zone {
+            border: 1.5px dashed rgba(212,168,67,0.3); border-radius: var(--radius);
+            padding: 1.6rem 0.8rem; text-align: center; cursor: pointer;
+            transition: all 0.2s ease; position: relative; overflow: hidden;
+            background: rgba(255,255,255,0.02);
+        }
+        .upload-zone:hover     { border-color: var(--gold); background: rgba(212,168,67,0.04); }
+        .upload-zone.has-file  { border-color: var(--gold); border-style: solid; background: rgba(212,168,67,0.06); }
+        .upload-zone.invalid   { border-color: var(--danger); border-style: solid; background: rgba(224,84,84,0.06); }
+        .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+        .zone-icon     { font-size: 1.8rem; display: block; margin-bottom: 0.5rem; }
+        .zone-title    { font-size: 0.8rem; font-weight: 500; color: var(--cream); display: block; margin-bottom: 0.25rem; }
+        .zone-hint     { font-size: 0.68rem; color: var(--muted); }
+        .zone-filename { font-family: Consolas,monospace; font-size: 0.65rem; color: var(--gold-light); margin-top: 0.4rem; word-break: break-all; display: none; }
+        .upload-zone.has-file .zone-filename { display: block; }
+
+        .selfie-btn {
+            border: 1.5px dashed rgba(212,168,67,0.3); border-radius: var(--radius);
+            padding: 1.6rem 0.8rem; text-align: center; cursor: pointer;
+            transition: all 0.2s ease; background: rgba(255,255,255,0.02); width: 100%;
+        }
+        .selfie-btn:hover    { border-color: var(--gold); background: rgba(212,168,67,0.04); }
+        .selfie-btn.has-photo { border-color: var(--gold); border-style: solid; background: rgba(212,168,67,0.06); }
+        .selfie-preview { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--gold); margin: 0 auto 0.5rem; display: none; }
+        .selfie-btn.has-photo .selfie-preview { display: block; }
+        .selfie-btn.has-photo .zone-icon { display: none; }
+
+        .field-error   { color: var(--danger);  font-size: 0.72rem; margin-top: 0.3rem; }
+        .field-success { color: var(--success); font-size: 0.72rem; margin-top: 0.3rem; }
+
+        .optional-inputs { margin-bottom: 1.2rem; }
+        .optional-label {
+            font-size: 0.7rem; font-weight: 600; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0.08em;
+            display: block; margin-bottom: 0.6rem;
+        }
+        .input-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.6rem; }
+        .kyc-input {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: 8px; padding: 0.55rem 0.8rem;
+            color: var(--cream); font-size: 0.82rem; width: 100%;
+            outline: none; transition: border-color 0.2s;
+        }
+        .kyc-input::placeholder { color: var(--muted); }
+        .kyc-input:focus { border-color: var(--gold); }
+
+        .bangla-input {
+            font-family: 'Shonar Bangla', 'Vrinda', 'Siyam Rupali', 'Kalpurush',
+                         'Likhan', 'Mukti', 'Akaash', 'Lohit Bengali',
+                         'Nirmala UI', serif;
+            font-size: 0.9rem;
+        }
+
+        .btn-verify {
+            width: 100%; padding: 1rem;
+            background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+            color: var(--navy); font-size: 0.95rem; font-weight: 700;
+            border: none; border-radius: var(--radius); cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+        }
+        .btn-verify:hover    { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(212,168,67,0.25); }
+        .btn-verify:active   { transform: translateY(0); }
+        .btn-verify:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .spinner { display: none; width: 18px; height: 18px; border: 2px solid rgba(11,22,41,0.3); border-top-color: var(--navy); border-radius: 50%; animation: spin 0.7s linear infinite; }
+        @@keyframes spin { to { transform: rotate(360deg); } }
+
+        .divider { border: none; border-top: 1px solid var(--border); margin: 1.4rem 0 1.2rem; }
+        .security-row { display: flex; align-items: center; justify-content: center; gap: 1.2rem; flex-wrap: wrap; }
+        .security-item { display: flex; align-items: center; gap: 0.35rem; font-size: 0.7rem; color: var(--muted); }
+
+        .modal-overlay { position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.88); backdrop-filter:blur(8px); display:none; align-items:center; justify-content:center; padding:1rem; }
+        .modal-overlay.open { display:flex; }
+        .modal { background:var(--navy-mid); border:1px solid rgba(212,168,67,0.2); border-radius:26px; width:100%; max-width:520px; box-shadow:0 40px 100px rgba(0,0,0,0.8); overflow:hidden; animation:fadeUp 0.3s ease both; }
+        @@keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        .modal-topbar { display:flex; align-items:center; justify-content:space-between; padding:1.1rem 1.4rem 0; }
+        .modal-brand { display:flex; align-items:center; gap:0.6rem; }
+        .modal-brand-icon { width:32px; height:32px; border-radius:8px; background:rgba(212,168,67,0.15); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-size:0.95rem; }
+        .modal-brand-text { font-size:0.8rem; font-weight:600; color:var(--white); }
+        .modal-brand-sub  { font-size:0.65rem; color:var(--muted); }
+        .modal-close { width:32px; height:32px; border-radius:50%; background:rgba(255,255,255,0.06); border:1px solid var(--border); color:var(--muted); cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center; transition:all 0.2s; }
+        .modal-close:hover { background:rgba(224,84,84,0.15); color:var(--danger); border-color:rgba(224,84,84,0.4); }
+
+        .liveness-header { padding:0.9rem 1.4rem 0.7rem; border-bottom:1px solid rgba(212,168,67,0.1); }
+        .liveness-title { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:0.65rem; }
+        .liveness-pills { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:0.35rem; }
+        .liveness-pill { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:9px; padding:0.45rem 0.55rem; display:flex; align-items:center; gap:0.4rem; transition:all 0.35s; }
+        .pill-num { width:20px; height:20px; border-radius:50%; flex-shrink:0; background:rgba(255,255,255,0.06); border:1.5px solid rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; font-size:0.62rem; font-weight:700; color:var(--muted); transition:all 0.35s; }
+        .pill-info { min-width:0; }
+        .pill-label { font-size:0.66rem; font-weight:600; color:var(--muted); display:block; }
+        .pill-desc  { font-size:0.56rem; color:rgba(255,255,255,0.22); display:block; }
+        .liveness-pill.active { background:rgba(212,168,67,0.08); border-color:rgba(212,168,67,0.3); }
+        .liveness-pill.active .pill-num   { background:rgba(212,168,67,0.15); border-color:var(--gold); color:var(--gold); }
+        .liveness-pill.active .pill-label { color:var(--gold); }
+        .liveness-pill.done { background:rgba(46,204,138,0.07); border-color:rgba(46,204,138,0.3); }
+        .liveness-pill.done .pill-num     { background:var(--success); border-color:var(--success); color:#fff; }
+        .liveness-pill.done .pill-label   { color:var(--success); }
+        .liveness-pill.spoof { background:rgba(224,84,84,0.1); border-color:rgba(224,84,84,0.4); }
+        .liveness-pill.spoof .pill-num   { background:var(--danger); border-color:var(--danger); color:#fff; }
+        .liveness-pill.spoof .pill-label { color:var(--danger); }
+
+        .camera-wrap { position:relative; background:#000; aspect-ratio:4/3; overflow:hidden; }
+        #cameraFeed { width:100%; height:100%; object-fit:cover; display:block; transform:scaleX(-1); }
+        .camera-wrap::after { content:''; position:absolute; inset:0; pointer-events:none; background:radial-gradient(ellipse 65% 65% at 50% 50%,transparent 45%,rgba(0,0,0,0.5) 100%); }
+        .face-guide { position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+        .face-oval { width:190px; height:245px; border:2.5px solid rgba(212,168,67,0.65); border-radius:50%; box-shadow:0 0 0 9999px rgba(0,0,0,0.42); transition:all 0.3s; position:relative; }
+        .face-oval.aligned { border-color:var(--success); box-shadow:0 0 0 9999px rgba(0,0,0,0.38),0 0 28px rgba(46,204,138,0.55); animation:ovalPulse 2s ease-in-out infinite; }
+        .face-oval::before { content:''; position:absolute; top:-3px; left:-3px; width:18px; height:18px; border-top:3px solid var(--gold); border-left:3px solid var(--gold); border-radius:4px 0 0 0; }
+        .face-oval::after  { content:''; position:absolute; bottom:-3px; right:-3px; width:18px; height:18px; border-bottom:3px solid var(--gold); border-right:3px solid var(--gold); border-radius:0 0 4px 0; }
+        @@keyframes ovalPulse { 0%,100%{box-shadow:0 0 0 9999px rgba(0,0,0,0.38),0 0 16px rgba(46,204,138,0.4)}50%{box-shadow:0 0 0 9999px rgba(0,0,0,0.38),0 0 34px rgba(46,204,138,0.72)} }
+        .challenge-card { position:absolute; bottom:0; left:0; right:0; z-index:3; padding:0.8rem 0.9rem; background:linear-gradient(to top,rgba(7,14,27,0.97),rgba(7,14,27,0.6) 70%,transparent); display:flex; align-items:center; gap:0.7rem; }
+        .challenge-icon-wrap { width:40px; height:40px; border-radius:11px; flex-shrink:0; background:rgba(212,168,67,0.12); border:1px solid rgba(212,168,67,0.25); display:flex; align-items:center; justify-content:center; font-size:1.2rem; transition:all 0.3s; }
+        .challenge-icon-wrap.success { background:rgba(46,204,138,0.12); border-color:rgba(46,204,138,0.3); }
+        .challenge-body { flex:1; min-width:0; position:relative; }
+        .challenge-label { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.07em; color:var(--gold); font-weight:600; margin-bottom:0.12rem; }
+        .challenge-label.success-label { color:var(--success); }
+        .challenge-instruction { font-size:0.82rem; font-weight:600; color:var(--white); }
+        .challenge-bar { position:absolute; bottom:0; left:0; height:2px; background:linear-gradient(90deg,var(--gold),var(--gold-light)); width:0%; transition:width 0.18s linear; border-radius:1px; }
+        .flash { position:absolute; inset:0; z-index:10; background:white; opacity:0; pointer-events:none; transition:opacity 0.06s; }
+
+        .modal-footer { padding:0.8rem 1.4rem; display:flex; align-items:center; justify-content:space-between; border-top:1px solid rgba(255,255,255,0.05); }
+        .modal-hint { font-size:0.68rem; color:var(--muted); }
+        .modal-hint::before { content:'🔒'; margin-right:0.3rem; }
+        .live-btn-retake { padding:0.45rem 0.9rem; background:rgba(255,255,255,0.05); color:var(--muted); border:1px solid rgba(255,255,255,0.1); border-radius:7px; font-size:0.75rem; font-weight:600; cursor:pointer; transition:all 0.2s; display:none; }
+        .live-btn-retake.visible { display:block; }
+        .live-btn-retake:hover { background:rgba(255,255,255,0.1); color:var(--cream); }
+
+        .id-notice { background:rgba(212,168,67,0.07); border:1px solid rgba(212,168,67,0.2); border-radius:var(--radius); padding:0.7rem 0.9rem; font-size:0.75rem; color:var(--gold-light); margin-bottom:1rem; display:flex; align-items:flex-start; gap:0.5rem; }
+
+        .footer { background:var(--navy); border-top:1px solid var(--border); padding:1rem 3rem; display:flex; align-items:center; justify-content:space-between; }
+        .footer-text { font-size:0.73rem; color:var(--muted); }
+        .footer-text span { color:var(--gold); }
+
+        @@media (max-width: 1024px) {
+            .page-body { grid-template-columns: 1fr; }
+            .left-col  { padding: 2.5rem 2rem; border-right: none; border-bottom: 1px solid var(--border); }
+            .right-col { padding: 2.5rem 1.5rem; }
+            .navbar    { padding: 1rem 1.5rem; }
+            .input-row { grid-template-columns: 1fr; }
+            .footer    { flex-direction: column; gap: 0.4rem; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a class="nav-logo" href="#">
+            <div class="logo-emblem">🏦</div>
+            <span class="logo-text">Secure<span>Bank</span></span>
+        </a>
+        <span class="nav-badge">🔒 Secure Session</span>
+    </nav>
+
+    <div class="page-body">
+        <div class="left-col">
+            <div class="hero-tag">AI-Powered Identity Verification</div>
+            <h1 class="hero-title">Verify Your<br /><span>Identity</span></h1>
+            <p class="hero-subtitle">
+                Upload your NID card and complete the liveness check.
+                Our ArcFace AI will confirm your identity instantly and securely — fully offline.
+            </p>
+            <div class="steps">
+                <div class="step-row active" id="step1Row">
+                    <div class="step-left"><div class="step-circle" id="step1Circle">1</div></div>
+                    <div class="step-info">
+                        <span class="step-name">Upload ID Card</span>
+                        <span class="step-desc" id="step1Desc">NID · Passport · Driving License</span>
+                    </div>
+                </div>
+                <div class="step-row inactive" id="step2Row">
+                    <div class="step-left"><div class="step-circle" id="step2Circle">2</div></div>
+                    <div class="step-info">
+                        <span class="step-name">Liveness Check</span>
+                        <span class="step-desc" id="step2Desc">Blink · Head turn · Motion</span>
+                    </div>
+                </div>
+                <div class="step-row inactive" id="step3Row">
+                    <div class="step-left"><div class="step-circle" id="step3Circle">3</div></div>
+                    <div class="step-info">
+                        <span class="step-name">AI Verification</span>
+                        <span class="step-desc" id="step3Desc">ArcFace face matching result</span>
+                    </div>
+                </div>
+            </div>
+            <div class="features">
+                <span class="feature-badge">🔐 Login Auth</span>
+                <span class="feature-badge">📋 KYC</span>
+                <span class="feature-badge">🏦 Account Opening</span>
+                <span class="feature-badge">💳 Transaction Approval</span>
+            </div>
+        </div>
+
+        <div class="right-col">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-icon">🪪</div>
+                    <div class="card-header-text">
+                        <h2>Identity Document &amp; Live Selfie</h2>
+                        <p>Both required · ID card must be a physical document photo</p>
+                    </div>
+                </div>
+
+                <div class="id-notice">
+                    ℹ️ <span>Only Bangladeshi NID accepted. Random photos will be rejected.</span>
+                </div>
+
+                <form asp-controller="Verification" asp-action="Verify"
+                      method="post" enctype="multipart/form-data" id="verifyForm">
+
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="sessionId" id="livenessSessionId" />
+
+                    <div class="upload-grid">
+                        <div class="upload-group">
+                            <label class="upload-label">🪪 ID Card Photo</label>
+                            <div class="upload-zone" id="idZone">
+                                <input type="file" name="idImage" id="idImageInput"
+                                       accept="image/*"
+                                       onchange="validateIdCard(this)" />
+                                <span class="zone-icon">🪪</span>
+                                <span class="zone-title">Upload ID Card</span>
+                                <span class="zone-hint">JPEG / PNG, max 15MB</span>
+                                <span class="zone-filename" id="idFileName"></span>
+                            </div>
+                            <div id="idValidationMsg"></div>
+                        </div>
+
+                        <!--Live selfie via liveness -->
+                        <div class="upload-group">
+                            <label class="upload-label">🤳 Live Selfie</label>
+                            <button type="button" class="selfie-btn" id="selfieBtn" onclick="openCamera()">
+                                <img src="" alt="Selfie Preview" class="selfie-preview" id="selfiePreview" />
+                                <span class="zone-icon">📷</span>
+                                <span class="zone-title">Open Camera</span>
+                                <span class="zone-hint">Complete liveness check</span>
+                            </button>
+                            <div id="selfieValidationMsg"></div>
+                        </div>
+
+                    </div>
+
+                    <div class="optional-inputs">
+                        <label class="optional-label">Optional: Enter NID info to verify</label>
+                        <div class="input-row">
+                            <input type="text" name="userName"   class="kyc-input" placeholder="Full name (English)" autocomplete="off" />
+                            <input type="text" name="userNameBn" class="kyc-input bangla-input" placeholder="নাম (বাংলা)" autocomplete="off" />
+                            <input type="text" name="userFather" class="kyc-input bangla-input" placeholder="পিতার নাম" autocomplete="off" />
+                        </div>
+                        <div class="input-row" style="margin-top:0.5rem;">
+                            <input type="text" name="userMother" class="kyc-input bangla-input" placeholder="মাতার নাম" autocomplete="off" />
+                            <input type="text" name="userNid"    class="kyc-input" placeholder="NID number" autocomplete="off" />
+                            <input type="text" name="userDob"    class="kyc-input" placeholder="Date of birth (e.g. 01 Jan 1990)" autocomplete="off" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-verify" id="submitBtn">
+                        <span id="btnText">🔍 Verify My Identity</span>
+                        <div class="spinner" id="spinner"></div>
+                    </button>
+                </form>
+
+                <hr class="divider" />
+
+                <div class="security-row">
+                    <div class="security-item"><span>🔒</span><span>Fully Offline</span></div>
+                    <div class="security-item"><span>🤖</span><span>ArcFace AI</span></div>
+                    <div class="security-item"><span>🗑️</span><span>Not Stored</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="cameraModal">
+        <div class="modal">
+            <div class="modal-topbar">
+                <div class="modal-brand">
+                    <div class="modal-brand-icon">🛡️</div>
+                    <div>
+                        <div class="modal-brand-text">Liveness Verification</div>
+                        <div class="modal-brand-sub">SecureBank · ArcFace AI</div>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeCamera()">✕</button>
+            </div>
+
+            <div class="liveness-header">
+                <div class="liveness-title">Complete all 3 challenges to prove you are a live person</div>
+                <div class="liveness-pills">
+                    <div class="liveness-pill active" id="lsStep1">
+                        <div class="pill-num" id="lsCircle1">1</div>
+                        <div class="pill-info"><span class="pill-label">Blink</span><span class="pill-desc">3× auto</span></div>
+                    </div>
+                    <div class="liveness-pill" id="lsStep2">
+                        <div class="pill-num" id="lsCircle2">2</div>
+                        <div class="pill-info"><span class="pill-label">Head Turn</span><span class="pill-desc">L→R→L</span></div>
+                    </div>
+                    <div class="liveness-pill" id="lsStep3">
+                        <div class="pill-num" id="lsCircle3">3</div>
+                        <div class="pill-info"><span class="pill-label">Motion</span><span class="pill-desc">Live check</span></div>
+                    </div>
+                    <div class="liveness-pill" id="lsStep4">
+                        <div class="pill-num" id="lsCircle4">📸</div>
+                        <div class="pill-info"><span class="pill-label">Capture</span><span class="pill-desc">Auto</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="camera-wrap">
+                <video id="cameraFeed" autoplay playsinline muted></video>
+                <div class="face-guide"><div class="face-oval" id="faceOval"></div></div>
+                <div class="challenge-card">
+                    <div class="challenge-icon-wrap" id="challengeIconWrap">👁️</div>
+                    <div class="challenge-body">
+                        <div class="challenge-label" id="challengeLabel">Challenge 1 of 3</div>
+                        <div class="challenge-instruction" id="challengeText">Camera starting...</div>
+                        <div class="challenge-bar" id="challengeBar"></div>
+                    </div>
+                </div>
+                <div class="flash" id="flashEffect"></div>
+            </div>
+
+            <canvas id="captureCanvas" style="display:none;"></canvas>
+
+            <div id="blinkSection" style="display:none;padding:0.6rem 1.4rem 0.3rem;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem;">
+                    <span style="font-size:0.72rem;color:var(--muted);">Blinks: <strong id="blinkCountLabel" style="color:var(--gold);">0 / 3</strong></span>
+                    <div id="blinkDots" style="display:flex;gap:0.2rem;"></div>
+                </div>
+            </div>
+
+            <div id="turnSection" style="display:none;padding:0.6rem 1.4rem 0.3rem;">
+                <div style="display:flex;gap:0.4rem;margin-bottom:0.3rem;">
+                    <div id="turnL" style="flex:1;padding:0.45rem;border-radius:8px;text-align:center;font-size:0.76rem;font-weight:700;background:rgba(255,255,255,0.03);border:1.5px solid rgba(255,255,255,0.1);color:var(--muted);transition:all 0.2s;">◀ LEFT</div>
+                    <div id="turnC" style="flex:1;padding:0.45rem;border-radius:8px;text-align:center;font-size:0.76rem;font-weight:700;background:rgba(212,168,67,0.1);border:1.5px solid rgba(212,168,67,0.3);color:var(--gold);transition:all 0.2s;">● CENTRE</div>
+                    <div id="turnR" style="flex:1;padding:0.45rem;border-radius:8px;text-align:center;font-size:0.76rem;font-weight:700;background:rgba(255,255,255,0.03);border:1.5px solid rgba(255,255,255,0.1);color:var(--muted);transition:all 0.2s;">RIGHT ▶</div>
+                </div>
+                <div id="turnSeqLabel" style="font-size:0.67rem;color:var(--muted);text-align:center;">Sequence: Right → Left → Right</div>
+            </div>
+
+            <div id="motionSection" style="display:none;padding:0.6rem 1.4rem 0.3rem;">
+                <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:0.6rem 0.9rem;text-align:center;">
+                    <div style="font-size:0.82rem;font-weight:600;color:var(--white);">🔍 Detecting live human motion…</div>
+                    <div style="font-size:0.65rem;color:var(--muted);margin-top:0.2rem;">Breathe naturally — static photos &amp; screens are rejected</div>
+                </div>
+            </div>
+
+            <div id="capturedSection" style="display:none;padding:0.6rem 1.4rem 0.8rem;">
+                <div style="width:100%;padding:1.05rem;border-radius:13px;background:rgba(46,204,138,0.1);border:1.5px solid rgba(46,204,138,0.4);text-align:center;">
+                    <div style="font-size:1.6rem;margin-bottom:0.3rem;">📸</div>
+                    <div style="font-size:0.92rem;font-weight:700;color:var(--success);">Selfie captured automatically!</div>
+                    <div style="font-size:0.68rem;color:var(--muted);margin-top:0.2rem;">Closing camera in a moment…</div>
+                </div>
+                <p style="text-align:center;font-size:0.68rem;color:var(--success);margin-top:0.5rem;font-weight:600;">✅ All 3 challenges verified — confirmed live human</p>
+            </div>
+
+            <div id="spoofSection" style="display:none;padding:0.6rem 1.4rem 0.8rem;">
+                <div style="width:100%;padding:1.05rem;border-radius:13px;background:rgba(224,84,84,0.12);border:1.5px solid rgba(224,84,84,0.5);text-align:center;">
+                    <div style="font-size:1.6rem;margin-bottom:0.3rem;">🚨</div>
+                    <div style="font-size:0.92rem;font-weight:700;color:var(--danger);">Spoofing Attempt Detected</div>
+                    <div style="font-size:0.72rem;color:rgba(224,84,84,0.8);margin-top:0.3rem;line-height:1.5;">Different faces were detected across the liveness stages.<br/>This may indicate an identity switch attempt.</div>
+                </div>
+                <p style="text-align:center;font-size:0.68rem;color:var(--danger);margin-top:0.5rem;font-weight:600;">⚠️ Verification failed — click Restart to try again</p>
+            </div>
+
+            <div class="modal-footer">
+                <span class="modal-hint">Live · not stored · encrypted</span>
+                <button type="button" id="retakeBtn" class="live-btn-retake" onclick="retakePhoto()">↺ Restart</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <span class="footer-text">© 2026 <span>SecureBank</span>. All rights reserved.</span>
+        <span class="footer-text">Powered by <span>InsightFace ArcFace</span> · PaddleOCR (PP-OCRv4)</span>
+    </footer>
+
+    <script>
+
+    let idCardValid   = false;
+    let selfieReady   = false;
+    let cameraStream  = null;
+
+    const FRAME_MS = 120;
+
+    let sessionId      = null;
+    let frameTimer     = null;
+    let challengeTimer = null;
+    let sending        = false;
+    let livePassed     = false;
+
+    // ── Step progress helpers ──────────────────────────────────────
+    function setStepDone(n, t) {
+        const r = document.getElementById('step' + n + 'Row');
+        const c = document.getElementById('step' + n + 'Circle');
+        const d = document.getElementById('step' + n + 'Desc');
+        if (r) r.className = 'step-row done';
+        if (c) c.textContent = '✓';
+        if (d && t) d.textContent = t;
+    }
+    function setStepActive(n, t) {
+        const r = document.getElementById('step' + n + 'Row');
+        const c = document.getElementById('step' + n + 'Circle');
+        const d = document.getElementById('step' + n + 'Desc');
+        if (r) r.className = 'step-row active';
+        if (c) c.textContent = n;
+        if (d && t) d.textContent = t;
+    }
+    function setStepInactive(n, t) {
+        const r = document.getElementById('step' + n + 'Row');
+        const c = document.getElementById('step' + n + 'Circle');
+        const d = document.getElementById('step' + n + 'Desc');
+        if (r) r.className = 'step-row inactive';
+        if (c) c.textContent = n;
+        if (d && t) d.textContent = t;
+    }
+
+    async function validateIdCard(input) {
+        const file   = input.files[0];
+        const zone   = document.getElementById('idZone');
+        const msg    = document.getElementById('idValidationMsg');
+        const nameEl = document.getElementById('idFileName');
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            showIdError('Please upload an image file (JPEG or PNG).');
+            input.value = '';
+            return;
+        }
+        if (file.size > 15 * 1024 * 1024) {
+            showIdError('File too large. Maximum 15MB allowed.');
+            input.value = '';
+            return;
+        }
+
+        idCardValid = false;
+        zone.classList.remove('invalid', 'has-file');
+        msg.innerHTML = '<div style="color:var(--gold);font-size:0.78rem;margin-top:0.3rem;">&#128269; Validating ID with PaddleOCR…</div>';
+
+        try {
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const fd    = new FormData();
+            fd.append('idImage', file);
+            fd.append('__RequestVerificationToken', token);
+
+            const response = await fetch('/Verification/ValidateId', { method: 'POST', body: fd });
+            const result   = await response.json();
+
+            if (result.valid) {
+                zone.classList.add('has-file');
+                nameEl.textContent = '📄 ' + file.name;
+                msg.innerHTML = '<div class="field-success">&#9989; ' + result.idType + ' detected &amp; verified</div>';
+                idCardValid = true;
+                setStepDone(1, result.idType + ' verified');
+                if (!selfieReady) setStepActive(2, 'Open camera and complete liveness check');
+                else              setStepActive(3, 'Click Verify to run ArcFace AI');
+            } else {
+                showIdError('&#10060; ' + (result.message || 'Not a valid Bangladesh ID.'));
+                input.value = '';
+                setStepActive(1, 'NID · Passport · Driving License');
+            }
+        } catch (e) {
+            showIdError('&#10060; Cannot connect to server. Make sure Docker containers are running.');
+            input.value = '';
+        }
+    }
+
+    function showIdError(text) {
+        document.getElementById('idValidationMsg').innerHTML = '<div class="field-error">' + text + '</div>';
+        document.getElementById('idZone').classList.add('invalid');
+        document.getElementById('idZone').classList.remove('has-file');
+        idCardValid = false;
+    }
+
+    function validateForm() {
+        let valid = true;
+
+        if (!idCardValid) {
+            document.getElementById('idValidationMsg').innerHTML =
+                '<div class="field-error">Please upload and validate your ID card first.</div>';
+            valid = false;
+        }
+
+        if (!selfieReady) {
+            document.getElementById('selfieValidationMsg').innerHTML =
+                '<div class="field-error">Please complete the liveness check first.</div>';
+            valid = false;
+        }
+
+        const sid = document.getElementById('livenessSessionId').value;
+        if (selfieReady && !sid) {
+            document.getElementById('selfieValidationMsg').innerHTML =
+                '<div class="field-error">Session expired. Please redo the liveness check.</div>';
+            selfieReady = false;
+            document.getElementById('selfieBtn').classList.remove('has-photo');
+            valid = false;
+        }
+
+        if (valid) {
+            const btn  = document.getElementById('submitBtn');
+            const txt  = document.getElementById('btnText');
+            const spin = document.getElementById('spinner');
+            //btn.disabled       = true;
+            txt.style.display  = 'none';
+            spin.style.display = 'block';
+            setStepActive(3, '⏳ ArcFace comparing faces…');
+        }
+
+        return valid;
+    }
+
+    function setLivenessStep(step) {
+        ['lsStep1', 'lsStep2', 'lsStep3', 'lsStep4'].forEach((id, i) => {
+            const el  = document.getElementById(id);
+            const num = document.getElementById(id.replace('Step', 'Circle'));
+            if (!el) return;
+            if (step === -1) {
+                // Spoof — mark all as failed
+                el.className = 'liveness-pill spoof';
+                if (num) num.textContent = '✕';
+            } else if (i + 1 < step)  { el.className = 'liveness-pill done';   if (num) num.textContent = '✓'; }
+            else if (i + 1 === step)   { el.className = 'liveness-pill active'; if (num) num.textContent = i + 1; }
+            else                       { el.className = 'liveness-pill';        if (num) num.textContent = (i === 3 ? '📸' : i + 1); }
+        });
+    }
+
+    function showChallenge(icon, text, label, success) {
+        const w = document.getElementById('challengeIconWrap');
+        const l = document.getElementById('challengeLabel');
+        const t = document.getElementById('challengeText');
+        if (!w) return;
+        w.textContent = icon;
+        w.className   = 'challenge-icon-wrap' + (success ? ' success' : '');
+        t.textContent = text;
+        if (label !== undefined) {
+            l.textContent = label;
+            l.className   = 'challenge-label' + (success ? ' success-label' : '');
+        }
+    }
+
+    function setBar(pct) {
+        const b = document.getElementById('challengeBar');
+        if (b) b.style.width = Math.min(100, Math.max(0, pct || 0)) + '%';
+    }
+
+    function showSection(name) {
+        ['blinkSection', 'turnSection', 'motionSection', 'capturedSection', 'spoofSection'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        if (name && name !== 'none') {
+            const el = document.getElementById(name + 'Section');
+            if (el) el.style.display = 'block';
+        }
+    }
+
+    function updateBlinkDots(count, needed) {
+        const dots = document.getElementById('blinkDots');
+        if (!dots) return;
+        dots.innerHTML = '';
+        for (let i = 0; i < needed; i++) {
+            const d = document.createElement('span');
+            d.textContent = i < count ? '●' : '○';
+            d.style.cssText = 'font-size:1.3rem;margin:0 0.22rem;color:' +
+                (i < count ? 'var(--success)' : 'var(--muted)') + ';transition:color 0.2s;';
+            dots.appendChild(d);
+        }
+        const cnt = document.getElementById('blinkCountLabel');
+        if (cnt) cnt.textContent = count + ' / ' + needed;
+    }
+
+    function updateTurnUI(sequence, currentDir, holdCount, holdNeeded) {
+        const seqEl = document.getElementById('turnSeqLabel');
+        if (seqEl) {
+            const target = ['left', 'right', 'left'];
+            const parts  = target.map((t, i) => {
+                const done = sequence && i < sequence.length;
+                return '<span style="color:' + (done ? 'var(--success)' : 'var(--muted)') + '">' +
+                       (done ? '✓' : t.charAt(0).toUpperCase() + t.slice(1)) + '</span>';
+            });
+            seqEl.innerHTML = 'Sequence: ' + parts.join(' → ');
+        }
+        const boxL = document.getElementById('turnL');
+        const boxC = document.getElementById('turnC');
+        const boxR = document.getElementById('turnR');
+        if (!boxL || !boxC || !boxR) return;
+
+        const active  = 'background:rgba(212,168,67,0.20);border-color:var(--gold);color:var(--gold);';
+        const done_s  = 'background:rgba(46,204,138,0.15);border-color:var(--success);color:var(--success);';
+        const neutral = 'background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.1);color:var(--muted);';
+        const centre  = 'background:rgba(212,168,67,0.1);border-color:rgba(212,168,67,0.3);color:var(--gold);';
+
+        boxL.style.cssText += neutral;
+        boxC.style.cssText += centre;
+        boxR.style.cssText += neutral;
+
+        const dir = currentDir || 'center';
+        const seq = sequence   || [];
+
+        if (dir === 'left')  boxL.style.cssText += active;
+        if (dir === 'right') boxR.style.cssText += active;
+        if (seq.length >= 1) boxL.style.cssText += done_s;
+        if (seq.length >= 2) boxR.style.cssText += done_s;
+        if (seq.length >= 3) boxL.style.cssText += done_s;
+
+        const pct  = (holdNeeded && holdCount) ? Math.min(holdCount / holdNeeded, 1.0) : 0;
+        const bars = Math.round(pct * 5);
+        const holdBar = bars > 0 ? ' [' + '█'.repeat(bars) + '░'.repeat(5 - bars) + ']' : '';
+
+        if (dir === 'left'  && seq.length < 3) boxL.textContent = 'RIGHT ▶'  + holdBar;
+        if (dir === 'right' && seq.length < 3) boxR.textContent = '◀ LEFT' + holdBar;
+        if (dir === 'center')                  boxC.textContent = '● CENTRE';
+    }
+
+    function captureFrameBlob(video, canvas) {
+        canvas.width  = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext('2d');
+        // Draw unmirrored — do NOT ctx.scale(-1,1) here
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92));
+    }
+
+    async function sendFrame() {
+        if (sending || !sessionId || !cameraStream) return;
+        const video  = document.getElementById('cameraFeed');
+        const canvas = document.getElementById('captureCanvas');
+        if (!video || video.paused || video.ended || video.videoWidth === 0) return;
+
+        sending = true;
+        try {
+            const blob = await captureFrameBlob(video, canvas);
+            const fd   = new FormData();
+            fd.append('frame', blob, 'frame.jpg');
+
+            const res = await fetch(
+                '/Verification/LivenessFrame?sessionId=' + encodeURIComponent(sessionId),
+                { method: 'POST', body: fd }
+            );
+
+            if (!res.ok) {
+                if (res.status === 404) {
+                    stopFrameSending();
+                    showChallenge('⚠️', 'Session expired. Restart.', 'Error', false);
+                }
+                return;
+            }
+
+            handleResponse(await res.json());
+        } catch (e) {
+            showChallenge('⚠️', 'Server error — retrying…', 'Error', false);
+        } finally {
+            sending = false;
+        }
+    }
+
+    function handleResponse(data) {
+        const { stage, passed, progress, icon, message,
+                blink_count, blink_needed, turn_sequence,
+                challenge_done, auto_captured } = data;
+
+        setBar(progress);
+        showChallenge(icon || '👁️', message || '', undefined, passed || stage === 'done');
+
+        if (stage === 'align') {
+            document.getElementById('faceOval').classList.remove('aligned');
+            showSection('none');
+            return;
+        }
+
+        if (stage === 'blink') {
+            document.getElementById('faceOval').classList.add('aligned');
+            setLivenessStep(1);
+            showSection('blink');
+            updateBlinkDots(blink_count || 0, blink_needed || 3);
+            return;
+        }
+
+        if (stage === 'turn') {
+            setLivenessStep(2);
+            showSection('turn');
+            updateTurnUI(turn_sequence, data.current_direction, data.hold_count, data.hold_needed);
+            return;
+        }
+
+        if (stage === 'motion') {
+            setLivenessStep(3);
+            showSection('motion');
+            return;
+        }
+
+        if (stage === 'spoof' || data.spoof_flagged) {
+            if (challengeTimer) { clearTimeout(challengeTimer); challengeTimer = null; }
+            stopFrameSending();
+            livePassed  = false;
+            selfieReady = false;
+
+            // Clear any partial session
+            const hf = document.getElementById('livenessSessionId');
+            if (hf) hf.value = '';
+
+            try {
+                const flash = document.getElementById('flashEffect');
+                if (flash) {
+                    flash.style.background = 'rgba(224,84,84,0.6)';
+                    flash.style.opacity = '1';
+                    setTimeout(() => {
+                        flash.style.opacity = '0';
+                        flash.style.background = 'white';
+                    }, 600);
+                }
+            } catch (e) { /* non-critical */ }
+
+            showSection('spoof');
+            showChallenge('🚨', data.message || '⚠️ Identity spoofing detected — different faces present during liveness check', 'Security Alert', false);
+            setLivenessStep(-1);  
+
+            document.getElementById('retakeBtn').classList.add('visible');
+            document.getElementById('selfieValidationMsg').innerHTML =
+                '<div class="field-error">🚨 Spoofing detected: different faces during liveness. Please restart.</div>';
+            setStepActive(2, '⚠️ Liveness check failed — restart required');
+
+            console.warn('[SECURITY] Spoof detected:', data.consistency_scores || data.failures);
+            return;
+        }
+
+        if (stage === 'done' || passed) {
+            if (challengeTimer) { clearTimeout(challengeTimer); challengeTimer = null; }
+
+            const hf = document.getElementById('livenessSessionId');
+            if (hf && sessionId) {
+                hf.value = sessionId;
+                console.log('[LIVENESS] sessionId set:', sessionId);
+            }
+
+            livePassed = true;
+            stopFrameSending();
+
+            try {
+                const flash = document.getElementById('flashEffect');
+                if (flash) { flash.style.opacity = '1'; setTimeout(() => { flash.style.opacity = '0'; }, 250); }
+            } catch (e) { /* non-critical */ }
+
+            setLivenessStep(4);
+            showSection('captured');
+
+            try {
+                const v    = document.getElementById('cameraFeed');
+                const snap = document.createElement('canvas');
+                snap.width  = v.videoWidth  || 320;
+                snap.height = v.videoHeight || 240;
+                const sc = snap.getContext('2d');
+                sc.translate(snap.width, 0);
+                sc.scale(-1, 1);            
+                sc.drawImage(v, 0, 0);
+                const preview = document.getElementById('selfiePreview');
+                if (preview) preview.src = snap.toDataURL('image/jpeg', 0.9);
+            } catch (e) {
+                console.warn('[LIVENESS] selfie preview failed (non-critical):', e.message);
+            }
+
+            document.getElementById('selfieBtn').classList.add('has-photo');
+            document.getElementById('selfieValidationMsg').innerHTML =
+                '<div class="field-success">&#9989; Selfie auto-captured during liveness check</div>';
+            selfieReady = true;
+
+            setStepDone(2, 'Liveness verified');
+            if (idCardValid) setStepActive(3, 'Click Verify to run ArcFace AI');
+            else             setStepInactive(3, 'Upload ID card first');
+
+            document.getElementById('retakeBtn').classList.add('visible');
+
+            setTimeout(() => {
+                stopCamera();
+                document.getElementById('cameraModal').classList.remove('open');
+            }, 1800);
+
+            return;
+        }
+
+        if (challenge_done === 'align') {
+            challengeTimer = setTimeout(() => { showSection('blink'); setLivenessStep(1); }, 600);
+        } else if (challenge_done === 'blink') {
+            challengeTimer = setTimeout(() => { showSection('turn');  setLivenessStep(2); }, 1200);
+        } else if (challenge_done === 'turn') {
+            challengeTimer = setTimeout(() => { showSection('motion'); setLivenessStep(3); }, 1200);
+        }
+    }
+
+    function startFrameSending() { stopFrameSending(); frameTimer = setInterval(sendFrame, FRAME_MS); }
+    function stopFrameSending()  { if (frameTimer) { clearInterval(frameTimer); frameTimer = null; } }
+
+
+    async function openCamera() {
+        document.getElementById('cameraModal').classList.add('open');
+        livePassed = false; sessionId = null; sending = false;
+        setLivenessStep(1);
+        showSection('none');
+        showChallenge('⏳', 'Starting camera…', 'Please wait', false);
+        setBar(0);
+        document.getElementById('faceOval').classList.remove('aligned');
+        document.getElementById('retakeBtn').classList.remove('visible');
+
+        try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+                audio: false,
+            });
+            const video = document.getElementById('cameraFeed');
+            video.srcObject = cameraStream;
+            await video.play();
+
+            const res = await fetch('/Verification/LivenessStart', { method: 'POST' });
+            if (!res.ok) throw new Error('Python API unavailable (status ' + res.status + ')');
+
+            const data = await res.json();
+            sessionId  = data.session_id;
+            console.log('[LIVENESS] Session created:', sessionId);
+
+            showSection('none');
+            showChallenge('👤', 'Position your face in the oval and hold still', 'Face Alignment', false);
+            startFrameSending();
+        } catch (err) {
+            console.error('[LIVENESS] openCamera error:', err);
+            if (err.name === 'NotAllowedError')
+                showChallenge('❌', 'Camera access denied. Please allow camera access and retry.', 'Error', false);
+            else
+                showChallenge('❌', 'Cannot connect. Make sure Docker containers are running. ' + err.message, 'Connection Error', false);
+        }
+    }
+
+    function closeCamera() {
+        if (sessionId) {
+            fetch('/Verification/LivenessCancel?sessionId=' + encodeURIComponent(sessionId), { method: 'POST' })
+                .catch(() => {});
+        }
+        stopCamera();
+        document.getElementById('cameraModal').classList.remove('open');
+    }
+
+    function stopCamera() {
+        stopFrameSending();
+        if (challengeTimer) { clearTimeout(challengeTimer); challengeTimer = null; }
+        if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+    }
+
+    function retakePhoto() {
+        stopCamera();
+        livePassed  = false;
+        selfieReady = false;
+        sessionId   = null;
+
+        const hf = document.getElementById('livenessSessionId');
+        if (hf) hf.value = '';
+
+        document.getElementById('selfieBtn').classList.remove('has-photo');
+        const preview = document.getElementById('selfiePreview');
+        if (preview) preview.src = '';
+        document.getElementById('selfieValidationMsg').innerHTML = '';
+
+        setStepActive(2, 'Retake liveness check');
+        setStepInactive(3, 'Waiting for selfie…');
+        openCamera();
+    }
+
+    document.getElementById("verifyForm").addEventListener("submit", function (e) {
+    if (!validateForm()) {
+        e.preventDefault();
+        return;
+    }
+
+    setTimeout(() => {
+        const btn  = document.getElementById('submitBtn');
+        const txt  = document.getElementById('btnText');
+        const spin = document.getElementById('spinner');
+
+        btn.disabled = true;
+        txt.style.display = 'none';
+        spin.style.display = 'block';
+    }, 0);
+});
+    </script>
+</body>
+</html>

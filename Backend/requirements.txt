@@ -1,0 +1,16 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+insightface==0.7.3
+onnxruntime==1.17.3
+opencv-python-headless==4.9.0.80
+numpy==1.26.4
+Cython==3.0.10
+python-multipart==0.0.9
+mediapipe==0.10.14
+scipy==1.13.1
+paddlepaddle==2.6.2
+paddleocr==2.8.1
+pytesseract==0.3.13
+Pillow>=10.0.0
+imutils>=0.5.4
+nltk>=3.8.1
